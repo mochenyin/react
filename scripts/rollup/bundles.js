@@ -95,25 +95,6 @@ const bundles = [
     externals: ['react'],
   },
 
-  /******* React Fire *******/
-  {
-    bundleTypes: [
-      UMD_DEV,
-      UMD_PROD,
-      UMD_PROFILING,
-      NODE_DEV,
-      NODE_PROD,
-      NODE_PROFILING,
-      FB_WWW_DEV,
-      FB_WWW_PROD,
-      FB_WWW_PROFILING,
-    ],
-    moduleType: RENDERER,
-    entry: 'react-dom/unstable-fire',
-    global: 'ReactFire',
-    externals: ['react'],
-  },
-
   /******* Test Utils *******/
   {
     moduleType: RENDERER_UTILS,
@@ -410,14 +391,14 @@ const bundles = [
   {
     bundleTypes: [NODE_DEV, NODE_PROD],
     moduleType: ISOMORPHIC,
-    entry: 'react-fresh/babel',
+    entry: 'react-refresh/babel',
     global: 'ReactFreshBabelPlugin',
     externals: [],
   },
   {
     bundleTypes: [NODE_DEV, NODE_PROD],
     moduleType: ISOMORPHIC,
-    entry: 'react-fresh/runtime',
+    entry: 'react-refresh/runtime',
     global: 'ReactFreshRuntime',
     externals: [],
   },
@@ -438,21 +419,6 @@ const bundles = [
   },
 
   /******* React Events (experimental) *******/
-  {
-    bundleTypes: [
-      UMD_DEV,
-      UMD_PROD,
-      NODE_DEV,
-      NODE_PROD,
-      FB_WWW_DEV,
-      FB_WWW_PROD,
-    ],
-    moduleType: ISOMORPHIC,
-    entry: 'react-events',
-    global: 'ReactEvents',
-    externals: [],
-  },
-
   {
     bundleTypes: [
       UMD_DEV,
@@ -553,8 +519,38 @@ const bundles = [
       FB_WWW_PROD,
     ],
     moduleType: NON_FIBER_RENDERER,
+    entry: 'react-events/input',
+    global: 'ReactEventsInput',
+    externals: ['react'],
+  },
+
+  {
+    bundleTypes: [
+      UMD_DEV,
+      UMD_PROD,
+      NODE_DEV,
+      NODE_PROD,
+      FB_WWW_DEV,
+      FB_WWW_PROD,
+    ],
+    moduleType: NON_FIBER_RENDERER,
     entry: 'react-events/scroll',
     global: 'ReactEventsScroll',
+    externals: ['react'],
+  },
+
+  {
+    bundleTypes: [
+      UMD_DEV,
+      UMD_PROD,
+      NODE_DEV,
+      NODE_PROD,
+      FB_WWW_DEV,
+      FB_WWW_PROD,
+    ],
+    moduleType: NON_FIBER_RENDERER,
+    entry: 'react-events/keyboard',
+    global: 'ReactEventsKeyboard',
     externals: ['react'],
   },
 ];

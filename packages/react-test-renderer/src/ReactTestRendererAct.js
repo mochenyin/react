@@ -11,7 +11,7 @@ import type {Thenable} from 'react-reconciler/src/ReactFiberWorkLoop';
 import {
   batchedUpdates,
   flushPassiveEffects,
-  ReactActingRendererSigil,
+  IsThisRendererActing,
 } from 'react-reconciler/inline.test';
 import ReactSharedInternals from 'shared/ReactSharedInternals';
 import warningWithoutStack from 'shared/warningWithoutStack';
@@ -19,14 +19,16 @@ import {warnAboutMissingMockScheduler} from 'shared/ReactFeatureFlags';
 import enqueueTask from 'shared/enqueueTask';
 import * as Scheduler from 'scheduler';
 
-const {ReactCurrentActingRendererSigil} = ReactSharedInternals;
+const {IsSomeRendererActing} = ReactSharedInternals;
 
 // this implementation should be exactly the same in
 // ReactTestUtilsAct.js, ReactTestRendererAct.js, createReactNoop.js
 
 let hasWarnedAboutMissingMockScheduler = false;
+const isSchedulerMocked =
+  typeof Scheduler.unstable_flushAllWithoutAsserting === 'function';
 const flushWork =
-  Scheduler.unstable_flushWithoutYielding ||
+  Scheduler.unstable_flushAllWithoutAsserting ||
   function() {
     if (warnAboutMissingMockScheduler === true) {
       if (hasWarnedAboutMissingMockScheduler === false) {
@@ -42,7 +44,13 @@ const flushWork =
         hasWarnedAboutMissingMockScheduler = true;
       }
     }
-    while (flushPassiveEffects()) {}
+
+    let didFlushWork = false;
+    while (flushPassiveEffects()) {
+      didFlushWork = true;
+    }
+
+    return didFlushWork;
   };
 
 function flushWorkAndMicroTasks(onDone: (err: ?Error) => void) {
@@ -67,17 +75,20 @@ let actingUpdatesScopeDepth = 0;
 
 function act(callback: () => Thenable) {
   let previousActingUpdatesScopeDepth = actingUpdatesScopeDepth;
-  let previousActingUpdatesSigil;
+  let previousIsSomeRendererActing;
+  let previousIsThisRendererActing;
   actingUpdatesScopeDepth++;
-  if (__DEV__) {
-    previousActingUpdatesSigil = ReactCurrentActingRendererSigil.current;
-    ReactCurrentActingRendererSigil.current = ReactActingRendererSigil;
-  }
+
+  previousIsSomeRendererActing = IsSomeRendererActing.current;
+  previousIsThisRendererActing = IsThisRendererActing.current;
+  IsSomeRendererActing.current = true;
+  IsThisRendererActing.current = true;
 
   function onDone() {
     actingUpdatesScopeDepth--;
+    IsSomeRendererActing.current = previousIsSomeRendererActing;
+    IsThisRendererActing.current = previousIsThisRendererActing;
     if (__DEV__) {
-      ReactCurrentActingRendererSigil.current = previousActingUpdatesSigil;
       if (actingUpdatesScopeDepth > previousActingUpdatesScopeDepth) {
         // if it's _less than_ previousActingUpdatesScopeDepth, then we can assume the 'other' one has warned
         warningWithoutStack(
@@ -89,7 +100,15 @@ function act(callback: () => Thenable) {
     }
   }
 
-  const result = batchedUpdates(callback);
+  let result;
+  try {
+    result = batchedUpdates(callback);
+  } catch (error) {
+    // on sync errors, we still want to 'cleanup' and decrement actingUpdatesScopeDepth
+    onDone();
+    throw error;
+  }
+
   if (
     result !== null &&
     typeof result === 'object' &&
@@ -124,7 +143,11 @@ function act(callback: () => Thenable) {
         called = true;
         result.then(
           () => {
-            if (actingUpdatesScopeDepth > 1) {
+            if (
+              actingUpdatesScopeDepth > 1 ||
+              (isSchedulerMocked === true &&
+                previousIsSomeRendererActing === true)
+            ) {
               onDone();
               resolve();
               return;
@@ -159,7 +182,10 @@ function act(callback: () => Thenable) {
 
     // flush effects until none remain, and cleanup
     try {
-      if (actingUpdatesScopeDepth === 1) {
+      if (
+        actingUpdatesScopeDepth === 1 &&
+        (isSchedulerMocked === false || previousIsSomeRendererActing === false)
+      ) {
         // we're about to exit the act() scope,
         // now's the time to flush effects
         flushWork();

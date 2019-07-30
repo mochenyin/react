@@ -7,15 +7,64 @@
  * @flow
  */
 
-import type {Fiber} from './ReactFiber';
+import type {Fiber, Dependencies} from './ReactFiber';
+import type {
+  ReactEventResponder,
+  ReactEventResponderInstance,
+} from 'shared/ReactTypes';
+import type {Instance} from './ReactFiberHostConfig';
 
-import {
-  HostComponent,
-  HostText,
-  HostPortal,
-  SuspenseComponent,
-  Fragment,
-} from 'shared/ReactWorkTags';
+import {NoWork} from './ReactFiberExpirationTime';
+
+import {SuspenseComponent, Fragment} from 'shared/ReactWorkTags';
+
+let currentlyRenderingFiber: null | Fiber = null;
+let currentListenerHookIndex: number = 0;
+
+export function prepareToReadListenerHooks(workInProgress: Fiber): void {
+  currentlyRenderingFiber = workInProgress;
+  currentListenerHookIndex = 0;
+}
+
+function getListenerHooks(): Array<{
+  responder: ReactEventResponder<any, any>,
+  props: Object,
+}> {
+  let listeners;
+  let dependencies: Dependencies | null = ((currentlyRenderingFiber: any): Fiber)
+    .dependencies;
+  if (dependencies === null) {
+    dependencies = ((currentlyRenderingFiber: any): Fiber).dependencies = {
+      expirationTime: NoWork,
+      firstContext: null,
+      listeners: [],
+      responders: null,
+    };
+  }
+  listeners = dependencies.listeners;
+  if (listeners === null) {
+    dependencies.listeners = listeners = [];
+  }
+  return listeners;
+}
+
+export function updateListenerHook(
+  responder: ReactEventResponder<any, any>,
+  props: Object,
+) {
+  const listeners = getListenerHooks();
+  if (listeners.length === currentListenerHookIndex) {
+    listeners.push({
+      responder,
+      props,
+    });
+    currentListenerHookIndex++;
+  } else {
+    const currentListenerHook = listeners[currentListenerHookIndex++];
+    currentListenerHook.responder = responder;
+    currentListenerHook.props = props;
+  }
+}
 
 export function isFiberSuspenseAndTimedOut(fiber: Fiber): boolean {
   return fiber.tag === SuspenseComponent && fiber.memoizedState !== null;
@@ -48,39 +97,19 @@ export function getSuspenseFiberFromTimedOutChild(fiber: Fiber): Fiber {
   return ((((fiber.return: any): Fiber).return: any): Fiber);
 }
 
-export function getEventComponentHostChildrenCount(
-  eventComponentFiber: Fiber,
-): ?number {
-  if (__DEV__) {
-    let hostChildrenCount = 0;
-    const getHostChildrenCount = node => {
-      if (isFiberSuspenseAndTimedOut(node)) {
-        const fallbackChild = getSuspenseFallbackChild(node);
-        if (fallbackChild !== null) {
-          getHostChildrenCount(fallbackChild);
-        }
-      } else if (
-        node.tag === HostComponent ||
-        node.tag === HostText ||
-        node.tag === HostPortal
-      ) {
-        hostChildrenCount++;
-      } else {
-        const child = node.child;
-        if (child !== null) {
-          getHostChildrenCount(child);
-        }
-      }
-      const sibling = node.sibling;
-      if (sibling !== null) {
-        getHostChildrenCount(sibling);
-      }
-    };
-
-    if (eventComponentFiber.child !== null) {
-      getHostChildrenCount(eventComponentFiber.child);
-    }
-
-    return hostChildrenCount;
-  }
+export function createResponderInstance(
+  responder: ReactEventResponder<any, any>,
+  responderProps: Object,
+  responderState: Object,
+  target: Instance,
+  fiber: Fiber,
+): ReactEventResponderInstance<any, any> {
+  return {
+    fiber,
+    props: responderProps,
+    responder,
+    rootEventTypes: null,
+    state: responderState,
+    target,
+  };
 }

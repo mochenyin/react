@@ -45,9 +45,6 @@ export function addUserTimingListener() {
 // Disable javascript: URL strings in href for XSS protection.
 export const disableJavaScriptURLs = false;
 
-// Disables yielding during render in Concurrent Mode. Used for debugging only.
-export const disableYielding = false;
-
 // React Fire: prevent the value and checked attributes from syncing
 // with their related DOM properties
 export const disableInputAttributeSyncing = false;
@@ -62,8 +59,11 @@ export const warnAboutShorthandPropertyCollision = false;
 // This is a flag so we can fix warnings in RN core before turning it on
 export const warnAboutDeprecatedSetNativeProps = false;
 
-// Experimental React Events support. Only used in www builds for now.
-export const enableEventAPI = false;
+// Experimental React Flare event system and event components support.
+export const enableFlareAPI = false;
+
+// Experimental Host Component support.
+export const enableFundamentalAPI = false;
 
 // New API for JSX transforms to target - https://github.com/reactjs/rfcs/pull/107
 export const enableJSXTransformAPI = false;
@@ -78,3 +78,13 @@ export const revertPassiveEffectsChange = false;
 // but without making them discrete. The flag exists in case it causes
 // starvation problems.
 export const enableUserBlockingEvents = false;
+
+// Add a callback property to suspense to notify which promises are currently
+// in the update queue. This allows reporting and tracing of what is causing
+// the user to see a loading state.
+export const enableSuspenseCallback = false;
+
+// Part of the simplification of React.createElement so we can eventually move
+// from React.createElement to React.jsx
+// https://github.com/reactjs/rfcs/blob/createlement-rfc/text/0000-create-element-changes.md
+export const warnAboutDefaultPropsOnFunctionComponents = false;
